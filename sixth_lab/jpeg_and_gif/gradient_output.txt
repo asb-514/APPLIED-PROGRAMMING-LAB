@@ -1,0 +1,1 @@
+The input vector at which minimum occurs close to [2.00010986e+00 3.19572276e-04 5.00267143e-01], the minimum nearly is 1.8556065309538019e-07

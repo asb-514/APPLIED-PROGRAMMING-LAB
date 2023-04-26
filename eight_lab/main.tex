@@ -1,0 +1,211 @@
+\documentclass[titlepage, 11pt]{article}
+\usepackage[a4paper, total={6in, 9.5in}]{geometry}
+\usepackage{graphicx}
+\usepackage{amsfonts,amssymb}
+\usepackage{amsmath}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{minted}
+\usepackage[colorlinks=true, linkcolor=blue, urlcolor=blue, citecolor=blue, pdfborder={0 0 255}]{hyperref}
+\usepackage{colortbl}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{dirtytalk}
+\usepackage[semicolon, round]{natbib}
+\usepackage[ruled]{algorithm2e}
+\captionsetup[table]{skip=10pt}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\SetKwComment{Comment}{$\triangleright$\ }{}
+ \hypersetup{%
+ 	colorlinks=true,
+ 	linkcolor=blue,
+ 	linkbordercolor={0 0 1}
+ }
+
+% \renewcommand\lstlistingname{Algorithm}
+% \renewcommand\lstlistlistingname{Algorithms}
+% \def\lstlistingautorefname{Alg.}
+
+ \lstdefinestyle{Python}{
+ 	language        = Python,
+ 	frame           = lines, 
+ 	basicstyle      = \footnotesize,
+ 	keywordstyle    = \color{blue},
+ 	stringstyle     = \color{green},
+ 	commentstyle    = \color{red}\ttfamily
+ }
+
+% \setlength{\parindent}{0.0in}
+% \setlength{\parskip}{0.05in}
+
+\newcommand{\argmin}{\mathop{\mathrm{argmin}}}
+\newcommand{\argmax}{\mathop{\mathrm{argmax}}}
+\newcommand{\minimize}{\mathop{\mathrm{minimize}}}
+\newcommand{\maximize}{\mathop{\mathrm{maximize}}}
+\newcommand{\st}{\mathop{\mathrm{subject\,\,to}}}
+\newcommand{\dist}{\mathop{\mathrm{dist}}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+
+\def\R{\mathbb{R}}
+\def\E{\mathbb{E}}
+\def\P{\mathbb{P}}
+\def\S{\mathbb{S}}
+\def\Cov{\mathrm{Cov}}
+\def\Var{\mathrm{Var}}
+\def\half{\frac{1}{2}}
+\def\quat{\frac{1}{4}}
+\def\sign{\mathrm{sign}}
+\def\supp{\mathrm{supp}}
+\def\th{\mathrm{th}}
+\def\tr{\mathrm{tr}}
+\def\dim{\mathrm{dim}}
+\def\dom{\mathrm{dom}}
+
+\begin{document}
+ 
+\title{
+    {EE2703: Optimizing Python Performance}
+}
+\author{Annangi Shashank Babu, EE21B021}
+\date{\today}     
+\maketitle
+\setcounter{page}{0}
+\tableofcontents
+\newpage
+
+\section{How does cython work}
+
+\begin{flushleft}
+Cython is a programming language that is a superset of Python, which means that it adds additional syntax and functionality to Python.
+Cython optimizes the python code by adding static typing to Python, which allows the compiler to optimize the code for speed. In addition, Cython allows Python code to call C and C++ functions directly, which can further improve performance.
+\end{flushleft}
+\subsection{Optimising Fib.py}
+\begin{flushleft}
+we optimize a script containing a function that computes fibonacci
+numbers, the .pyx file is the cython code that is the optimized version
+of the python code and setup-fib.py file helps us to create a 
+extention module so that this optimized function can be imported
+to python scripts for use.
+\end{flushleft}
+
+\lstinputlisting[style=Python, caption={fib.pyx}]{fib.pyx}
+\lstinputlisting[style=Python, caption={setup-fib.py}]{setup_fib.py}
+
+following command is used (can be used in jup.dev.iitm.ac.in) for generating the c/cpp and the extention
+module 
+\begin{minted}{console}
+  $ python3 setup_fib.py build_ext -if 
+\end{minted}
+comparing the time of the optimized and nonoptimzed version of 
+the fibonacci function we see nearly 3000 times speed up (of-course this
+depends on the input given while timing the function).
+\lstinputlisting[style=Python, caption={ipython testing session}]{ipython_testfib_session.py}
+\begin{minted}{console}
+  $ ipython ipython_testfib_session.py 
+  70.2 µs ± 142 ns per loop (mean ± std. dev. of 7 runs, 10,000 loops each)
+  197 ms ± 462 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+\end{minted}
+\subsection{Motivation to use cython}
+\begin{flushleft}
+    if we get similar speedups then, a function that takes 8 hrs to complete some task can only take
+    9.6 seconds by using cython, this is a huge gain for the little changes we do in our code.
+\end{flushleft}
+\section{Speeding up the equation solver}
+We should endsure that the nested loops run in the most optimised
+way as these are the bottelnecks for our programs. 
+\begin{flushleft}
+    the first place where there are nested loops is where we perform partial pivoting
+    so here we optimise by introducing a function that calculates
+    the norm to compare norm of 2 complex numbers. So now the underlying
+    arithmatic takes place in cpp so it is faster.
+\end{flushleft}
+\begin{flushleft}
+    We can use \href{https://cython.readthedocs.io/en/latest/src/userguide/memoryviews.html}{Cython's typed memory views} to access the 
+    NumPy arrays more efficiently. Memory views provide direct access to the underlying memory of the arrays, which 
+    can eliminate the need for extra array indexing and copying.
+\end{flushleft}
+\begin{flushleft}
+    We store the a and b in separate memory views,
+    which can be accessed more efficiently than the original NumPy arrays. We also use local variables to store the real and imaginary parts of temporary values,
+    such as temp, to avoid repeated indexing.
+\end{flushleft}
+\begin{flushleft}
+    On top of the above optimisations we use some compiler
+    flags to optimise the binaries produces such as '-O3' flag
+    The -O3 flag enables a range of optimizations including inlining, loop unrolling, function outlining, and more. 
+    However, it can also make the compilation process slower and may result in larger binaries.
+\end{flushleft}
+\subsection{Code}
+here is the setup file which will generate the extention module(.so file on mac and linux)
+\lstinputlisting[style=Python, caption={setup-linal-solver.py}]{setup_linal_solver.py}
+
+\begin{flushleft}
+    cimport numpy gives access to C functions or attributes or sub-modules under numpy  \\
+import numpy gives access to Python functions or attributes or sub-modules under numpy.
+\end{flushleft}
+\begin{itemize}
+    \item boundscheck = False: This flag tells the Cython compiler to disable bounds checking on array and indexing operations.
+    \item wraparound = False: This flag tells the Cython compiler to assume that array indexing will not wrap around if it exceeds the array bounds.
+
+    \item nonecheck = False: This flag tells the Cython compiler to disable checks for None values
+    \item cdivision compiler directive in Cython can improve the performance of code that involves division operations by replacing them with faster C division operations.
+\end{itemize}
+\begin{flushleft}
+    We are also using the language = c++ directive to tell the Cython compiler to generate C++ code instead of C code. 
+\end{flushleft}
+here is the optimisation of the matrix solver code 
+\lstinputlisting[style=Python, caption={linal-solver.pyx}]{linal_solver.pyx}
+\subsection{Testing}
+\lstinputlisting[style=Python, caption={ipython testing session}]{ipython_test_linal_session.py}
+the result for a 100 x 100 matrix :
+\begin{minted}{console}
+  $ python3 setup_linal_solver.py build_ext -if 
+  $ ipython ipython_test_linal_session.py
+    667 µs ± 965 ns per loop (mean ± std. dev. of 7 runs, 1,000 loops each) 
+    150 ms ± 201 µs per loop (mean ± std. dev. of 7 runs, 10 loops each)
+\end{minted}
+\begin{flushleft}
+    we see roughly a speed up of \textbf{200} times.
+\end{flushleft}
+\section{Learning outcomes}
+\begin{itemize}
+    \item Acquired knowledge of the standalone Cython package and its capabilities
+    \item Learned how to write and use setup files for creating extension modules
+    \item Gained experience in running and testing scripts in iPython
+    \item Learned about the different compiler optimizers available for Cythonu and their effects on performance
+    \item Became familiar with the Just-In-Time compilation provided by Numba
+    \item Recognized the importance of performance optimization in scientific computations, and the impact it can have on the efficiency and accuracy of computational methods.
+    \item I got a slight touch on SWIG, which provides an interface for creating bindings between C/C++ code and other programming languages, making it possible to use existing C/C++ code in Python.
+
+
+\end{itemize}
+\section{Conclusion}
+\begin{flushleft}
+this assignment taught how to use Cython 
+to improve the performance of Python code, By leveraging static typing
+and generating C/CPP code, 
+Cython can significantly speed up the execution of computationally intensive Python programs. However, it is important to keep in mind 
+that Cython does have some limitations, such 
+as requiring additional effort to write and maintain code
+\end{flushleft}
+\begin{flushleft}
+    SWIG can be used to integrate C/C++ code with Python, while Numba provides just-in-time (JIT) compilation of Python code. These tools may be useful in certain scenarios, but they each have their own strengths and limitations.
+\end{flushleft}
+\begin{flushleft}
+    Finally, it is worth emphasizing the importance of performance optimization in Python for scientific computations. As datasets grow the runtime starts to increase, the ability to efficiently process and analyze data becomes increasingly crucial. By understanding and utilizing tools like Cython, Python developers can achieve the performance gains necessary for scientific computing.
+\end{flushleft}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Uncomment the lines below to add references using bibtex.
+% \bibliographystyle{plainnat}
+% \bibliography{references}
+
+\end{document}
+
